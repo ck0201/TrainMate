@@ -9,10 +9,8 @@ public class AutoMapperProfile : Profile
 {
     public AutoMapperProfile()
     {
-        // User mappings
-        CreateMap<User, UserResponse>();
-        CreateMap<CreateUserRequest, User>();
-        CreateMap<UpdateUserRequest, User>();
     }
 }
+
+
 

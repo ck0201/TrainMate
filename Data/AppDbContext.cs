@@ -9,21 +9,22 @@ public class AppDbContext : DbContext
     {
     }
 
-    public DbSet<User> Users { get; set; }
+    public DbSet<Train> Trains => Set<Train>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        base.OnModelCreating(modelBuilder);
-
-        // Configure User entity
-        modelBuilder.Entity<User>(entity =>
+        modelBuilder.Entity<Train>(entity =>
         {
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.FirstName).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.LastName).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.Email).IsRequired().HasMaxLength(255);
-            entity.HasIndex(e => e.Email).IsUnique();
+            entity.HasKey(e => e.TrainId);
+
+            entity.HasIndex(e => e.TrainNo)
+                  .IsUnique();
+
+            entity.Property(e => e.LastUpdated)
+                  .HasDefaultValueSql("now()");
         });
     }
 }
+
+
 
