@@ -5,11 +5,10 @@ namespace SelfLearning.DTOs.Requests;
 public class CreatePassengerTravelShareRequest
 {
     [Required]
-    [StringLength(10)]
-    public string TrainNo { get; set; } = string.Empty;
+    public int TrainNo { get; set; } = 0;
 
     [Required]
-    [StringLength(20)]
+    [RegularExpression(@"^\d{10}$", ErrorMessage = "PNR must be exactly 10 digits")]
     public string Pnr { get; set; } = string.Empty;
 
     [Required]
@@ -17,6 +16,11 @@ public class CreatePassengerTravelShareRequest
 
     [StringLength(500)]
     public string? Message { get; set; }
+    [Required]
+    [RegularExpression(@"^\d{10}$", ErrorMessage = "Phone number must contain exactly 10 digits")]
+    public string? PhoneNumber { get; set; }
 }
+
+
 
 

@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using SelfLearning.DTOs.Requests;
-using SelfLearning.DTOs.Responses;
 using SelfLearning.Services.Interfaces;
 
 namespace SelfLearning.Controllers;
@@ -21,10 +20,7 @@ public class PassengerController : ControllerBase
     }
 
     [HttpPost("travel-share")]
-    [ProducesResponseType(typeof(PassengerTravelShareResponse), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<PassengerTravelShareResponse>> CreateTravelShare(
-        [FromBody] CreatePassengerTravelShareRequest request)
+    public async Task<IActionResult> CreateTravelShare([FromBody] CreatePassengerTravelShareRequest request)
     {
         if (!ModelState.IsValid)
         {
@@ -42,6 +38,15 @@ public class PassengerController : ControllerBase
             return StatusCode(500, "An error occurred while processing your request.");
         }
     }
+
+    [HttpGet("get-filter-travel-data")]
+    public async Task<IActionResult> GetFilterTravelData([FromQuery] string? trainNo, [FromQuery] DateOnly? travelDate)
+    {
+        var response = await _passengerService.GetFilterTravelData(trainNo, travelDate);
+        return Ok(response);
+    }
 }
+
+
 
 

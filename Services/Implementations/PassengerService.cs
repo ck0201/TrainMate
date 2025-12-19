@@ -27,111 +27,15 @@ public class PassengerService : IPassengerService
         CreatePassengerTravelShareRequest request)
     {
         _logger.LogInformation("Processing passenger travel share for TrainNo: {TrainNo}, PNR: {Pnr}", request.TrainNo, request.Pnr);
-
-        // Check if train exists in TrainMaster
-        var existingTrain = await _context.Trains
-            .FirstOrDefaultAsync(t => t.TrainNo == request.TrainNo);
-
-        bool trainWasCreated = false;
-
-        if (existingTrain == null)
-        {
-            _logger.LogInformation("Train {TrainNo} not found. Calling PNR API...", request.TrainNo);
-
-            // Call PNR API
-            var pnrResponse = await _pnrApiService.GetTrainDetailsByPnrAsync(request.Pnr);
-
-            // Check if train from PNR API response already exists
-            existingTrain = await _context.Trains
-                .FirstOrDefaultAsync(t => t.TrainNo == pnrResponse.TrainNo);
-
-            if (existingTrain == null)
-            {
-                // Insert TrainMaster
-                var newTrain = new Train
-                {
-                    TrainNo = pnrResponse.TrainNo,
-                    TrainName = pnrResponse.TrainName,
-                    LastUpdated = DateTime.UtcNow
-                };
-
-                _context.Trains.Add(newTrain);
-                await _context.SaveChangesAsync();
-
-                _logger.LogInformation("Created train: {TrainNo} - {TrainName}", newTrain.TrainNo, newTrain.TrainName);
-                existingTrain = newTrain;
-                trainWasCreated = true;
-            }
-            else
-            {
-                _logger.LogInformation("Train {TrainNo} from PNR API already exists", pnrResponse.TrainNo);
-            }
-
-            // Insert StationMaster (if stations don't exist)
-            var stationCodeToId = new Dictionary<string, int>();
-
-            foreach (var stationInfo in pnrResponse.Stations)
-            {
-                var existingStation = await _context.Stations
-                    .FirstOrDefaultAsync(s => s.StationCode == stationInfo.StationCode);
-
-                if (existingStation == null)
-                {
-                    var newStation = new Station
-                    {
-                        StationCode = stationInfo.StationCode,
-                        StationName = stationInfo.StationName
-                    };
-
-                    _context.Stations.Add(newStation);
-                    await _context.SaveChangesAsync();
-
-                    stationCodeToId[stationInfo.StationCode] = newStation.StationId;
-                    _logger.LogInformation("Created station: {StationCode} - {StationName}",
-                        newStation.StationCode, newStation.StationName);
-                }
-                else
-                {
-                    stationCodeToId[stationInfo.StationCode] = existingStation.StationId;
-                }
-            }
-
-            // Insert RouteStop (only if train was just created and route stops don't exist)
-            if (trainWasCreated)
-            {
-                var existingRouteStops = await _context.RouteStops
-                    .AnyAsync(rs => rs.TrainId == existingTrain.TrainId);
-
-                if (!existingRouteStops)
-                {
-                    foreach (var stationInfo in pnrResponse.Stations.OrderBy(s => s.SequenceNumber))
-                    {
-                        var routeStop = new RouteStop
-                        {
-                            TrainId = existingTrain.TrainId,
-                            StationId = stationCodeToId[stationInfo.StationCode],
-                            SeqNo = stationInfo.SequenceNumber,
-                            ArrivalTime = stationInfo.ArrivalTime,
-                            DepartureTime = stationInfo.DepartureTime
-                        };
-
-                        _context.RouteStops.Add(routeStop);
-                    }
-
-                    await _context.SaveChangesAsync();
-                    _logger.LogInformation("Created route stops for train: {TrainNo}", existingTrain.TrainNo);
-                }
-            }
-        }
-
         // Save Passenger Travel Share
         var passengerTravelShare = new PassengerTravelShare
         {
             Pnr = request.Pnr,
-            TrainId = existingTrain.TrainId,
+            TrainId = request.TrainNo,
             TravelDate = request.TravelDate,
             Message = request.Message,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            PhoneNumber = request.PhoneNumber
         };
 
         _context.PassengerTravelShares.Add(passengerTravelShare);
@@ -142,14 +46,45 @@ public class PassengerService : IPassengerService
         return new PassengerTravelShareResponse
         {
             ShareId = passengerTravelShare.ShareId,
-            TrainNo = existingTrain.TrainNo,
-            TrainName = existingTrain.TrainName ?? string.Empty,
+            TrainNo = request.TrainNo,
+            //TrainName = existingTrain.TrainName ?? string.Empty,
             Pnr = passengerTravelShare.Pnr,
             TravelDate = passengerTravelShare.TravelDate,
             Message = passengerTravelShare.Message,
-            CreatedAt = passengerTravelShare.CreatedAt,
-            TrainWasCreated = trainWasCreated
+            CreatedAt = passengerTravelShare.CreatedAt
         };
+    }
+
+    public async Task<List<PassengerTravelShareResponse>> GetFilterTravelData(string? trainNo, DateOnly? travelDate)
+    {
+        var query = _context.PassengerTravelShares
+        .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(trainNo))
+        {
+            trainNo = trainNo.Trim();
+            query = query.Where(x => x.Train.TrainNo == trainNo);
+        }
+        if (travelDate.HasValue)
+        {
+            query = query.Where(x => x.TravelDate == travelDate);
+        }
+
+        var result = await query
+        .AsNoTracking()
+        .OrderByDescending(x => x.CreatedAt)
+        .Select(x => new PassengerTravelShareResponse
+        {
+            ShareId = x.ShareId,
+            Pnr = x.Pnr,
+            TravelDate = x.TravelDate,
+            Message = x.Message,
+            TrainNo = x.TrainId,
+            TrainName = x.Train.TrainName ?? ""
+        })
+        .ToListAsync();
+
+        return result;
     }
 }
 

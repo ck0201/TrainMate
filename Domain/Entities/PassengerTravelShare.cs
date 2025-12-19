@@ -33,4 +33,8 @@ public class PassengerTravelShare
 
     // Navigation property
     public Train Train { get; set; } = null!;
+    
+    [MaxLength(15)]
+    [Column("phone_number")]
+    public string? PhoneNumber { get; set; }
 }

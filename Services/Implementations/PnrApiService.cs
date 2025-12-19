@@ -18,9 +18,6 @@ public class PnrApiService : IPnrApiService
     {
         _logger.LogInformation("Calling dummy PNR API for PNR: {Pnr}", pnr);
 
-        // Simulate API delay
-        await Task.Delay(500);
-
         // Dummy response - in real scenario, this would call actual external API
         var dummyResponse = new PnrApiResponse
         {
@@ -67,5 +64,7 @@ public class PnrApiService : IPnrApiService
         return dummyResponse;
     }
 }
+
+
 
 

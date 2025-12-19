@@ -6,6 +6,9 @@ namespace SelfLearning.Services.Interfaces;
 public interface IPassengerService
 {
     Task<PassengerTravelShareResponse> CreatePassengerTravelShareAsync(CreatePassengerTravelShareRequest request);
+    public Task<List<PassengerTravelShareResponse>> GetFilterTravelData(string? trainNo, DateOnly? travelDate);
 }
+
+
 
 
